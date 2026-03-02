@@ -1,24 +1,24 @@
 const AUTH_KEY = "app_authenticated";
-const APP_PASSWORD = process.env.NEXT_PUBLIC_APP_PASSWORD || "";
-
-export function isAuthEnabled(): boolean {
-  return APP_PASSWORD.length > 0;
-}
 
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
-  if (!isAuthEnabled()) return true;
   return sessionStorage.getItem(AUTH_KEY) === "true";
 }
 
-export function authenticate(password: string): boolean {
-  if (password === APP_PASSWORD) {
-    sessionStorage.setItem(AUTH_KEY, "true");
-    return true;
+export async function authenticate(password: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      sessionStorage.setItem(AUTH_KEY, "true");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
   }
-  return false;
-}
-
-export function getAppPassword(): string {
-  return APP_PASSWORD;
 }

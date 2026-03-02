@@ -1,37 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { isAuthEnabled, isAuthenticated, authenticate } from "@/lib/auth";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { isAuthenticated, authenticate } from "@/lib/auth";
+import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
-  const [needsAuth, setNeedsAuth] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (!isAuthEnabled()) {
-      setAuthed(true);
-    } else if (isAuthenticated()) {
-      setAuthed(true);
-    } else {
-      setNeedsAuth(true);
-    }
+    if (isAuthenticated()) setAuthed(true);
   }, []);
 
   if (!mounted) return null;
   if (authed) return <>{children}</>;
-  if (!needsAuth) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (authenticate(password)) {
+    if (!password || loading) return;
+    setLoading(true);
+    const ok = await authenticate(password);
+    setLoading(false);
+    if (ok) {
       setAuthed(true);
-      setError(false);
     } else {
       setError(true);
       setPassword("");
@@ -80,11 +76,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           )}
           <button
             type="submit"
-            disabled={!password}
-            className="w-full py-4 rounded-2xl text-white text-[15px] font-extrabold disabled:opacity-40 transition-all active:scale-[0.97]"
+            disabled={!password || loading}
+            className="w-full py-4 rounded-2xl text-white text-[15px] font-extrabold disabled:opacity-40 transition-all active:scale-[0.97] flex items-center justify-center gap-2"
             style={{ background: "linear-gradient(135deg, #7c5cfc, #a78bfa)", boxShadow: "0 8px 24px rgba(124,92,252,0.35)" }}
           >
-            입장하기
+            {loading ? <><Loader2 size={18} className="animate-spin" />확인 중...</> : "입장하기"}
           </button>
         </div>
       </form>

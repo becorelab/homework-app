@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AuthGate from "@/components/AuthGate";
 
 export const metadata: Metadata = {
   title: "숙제친구 - 초등학생 학습 도우미",
@@ -34,7 +35,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        {children}
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );

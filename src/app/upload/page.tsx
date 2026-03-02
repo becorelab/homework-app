@@ -4,7 +4,7 @@ import { useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Camera, ImagePlus, X, Send, Loader2 } from "lucide-react";
 import { SUBJECTS, getSubject, SubjectKey } from "@/lib/subjects";
-import { saveRecord, generateId, getProfile } from "@/lib/storage";
+import { saveRecord, generateId, getProfile, getActiveStudentId } from "@/lib/storage";
 import { format } from "date-fns";
 import BottomNav from "@/components/BottomNav";
 
@@ -36,9 +36,10 @@ function UploadContent() {
     const today = format(new Date(), "yyyy-MM-dd");
 
     saveRecord({
-      id, date: today, subject: selectedSubject, grade: profile.grade,
-      imageData, score: null, totalQuestions: null, correctAnswers: null,
-      feedback: null, coaching: null, createdAt: new Date().toISOString(),
+      id, studentId: getActiveStudentId(), date: today, subject: selectedSubject,
+      grade: profile.grade, imageData, score: null, totalQuestions: null,
+      correctAnswers: null, feedback: null, coaching: null,
+      createdAt: new Date().toISOString(),
     });
 
     try {

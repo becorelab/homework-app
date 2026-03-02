@@ -1,7 +1,10 @@
 import { SubjectKey } from "./subjects";
 
+export const MAX_STUDENTS = 3;
+
 export interface HomeworkRecord {
   id: string;
+  studentId: string;
   date: string;
   subject: SubjectKey;
   grade: number;
@@ -14,44 +17,126 @@ export interface HomeworkRecord {
   createdAt: string;
 }
 
-const STORAGE_KEY = "homework_records";
-const PROFILE_KEY = "user_profile";
-
 export interface UserProfile {
+  id: string;
   name: string;
   grade: number;
+  emoji: string;
 }
 
-export function getProfile(): UserProfile {
-  if (typeof window === "undefined") return { name: "", grade: 1 };
-  const data = localStorage.getItem(PROFILE_KEY);
-  if (!data) return { name: "", grade: 1 };
-  return JSON.parse(data);
-}
+const STUDENTS_KEY = "students";
+const ACTIVE_STUDENT_KEY = "active_student";
+const RECORDS_KEY = "homework_records";
 
-export function saveProfile(profile: UserProfile) {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-}
+const STUDENT_EMOJIS = ["🧒", "👧", "👦"];
 
-export function getRecords(): HomeworkRecord[] {
+// --- Student Management ---
+
+export function getStudents(): UserProfile[] {
   if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(STORAGE_KEY);
+  const data = localStorage.getItem(STUDENTS_KEY);
   if (!data) return [];
   return JSON.parse(data);
 }
 
+export function addStudent(name: string, grade: number): UserProfile {
+  const students = getStudents();
+  const newStudent: UserProfile = {
+    id: generateId(),
+    name,
+    grade,
+    emoji: STUDENT_EMOJIS[students.length] || "🎒",
+  };
+  students.push(newStudent);
+  localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  setActiveStudent(newStudent.id);
+  return newStudent;
+}
+
+export function updateStudent(id: string, updates: Partial<Pick<UserProfile, "name" | "grade">>) {
+  const students = getStudents();
+  const idx = students.findIndex((s) => s.id === id);
+  if (idx !== -1) {
+    students[idx] = { ...students[idx], ...updates };
+    localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  }
+}
+
+export function removeStudent(id: string) {
+  let students = getStudents();
+  students = students.filter((s) => s.id !== id);
+  localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  // Remove records
+  let records = getAllRecords();
+  records = records.filter((r) => r.studentId !== id);
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  // Switch active
+  if (getActiveStudentId() === id) {
+    setActiveStudent(students[0]?.id || "");
+  }
+}
+
+// --- Active Student ---
+
+export function getActiveStudentId(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(ACTIVE_STUDENT_KEY) || "";
+}
+
+export function setActiveStudent(id: string) {
+  localStorage.setItem(ACTIVE_STUDENT_KEY, id);
+}
+
+export function getActiveStudent(): UserProfile | null {
+  const students = getStudents();
+  const activeId = getActiveStudentId();
+  return students.find((s) => s.id === activeId) || students[0] || null;
+}
+
+// --- Backward compatibility ---
+
+export function getProfile(): UserProfile {
+  const student = getActiveStudent();
+  if (!student) return { id: "", name: "", grade: 1, emoji: "🧒" };
+  return student;
+}
+
+export function saveProfile(profile: { name: string; grade: number }) {
+  const students = getStudents();
+  if (students.length === 0) {
+    addStudent(profile.name, profile.grade);
+  } else {
+    const active = getActiveStudent();
+    if (active) updateStudent(active.id, profile);
+  }
+}
+
+// --- Homework Records ---
+
+function getAllRecords(): HomeworkRecord[] {
+  if (typeof window === "undefined") return [];
+  const data = localStorage.getItem(RECORDS_KEY);
+  if (!data) return [];
+  return JSON.parse(data);
+}
+
+export function getRecords(): HomeworkRecord[] {
+  const activeId = getActiveStudentId();
+  return getAllRecords().filter((r) => r.studentId === activeId);
+}
+
 export function saveRecord(record: HomeworkRecord) {
-  const records = getRecords();
+  const records = getAllRecords();
   records.push(record);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
 }
 
 export function updateRecord(id: string, updates: Partial<HomeworkRecord>) {
-  const records = getRecords();
+  const records = getAllRecords();
   const idx = records.findIndex((r) => r.id === id);
   if (idx !== -1) {
     records[idx] = { ...records[idx], ...updates };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
   }
 }
 
